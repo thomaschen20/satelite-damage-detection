@@ -1,7 +1,5 @@
 
-
-import cv2
-
+#import cv2
 import glob
 import matplotlib.pyplot as plt
 
@@ -91,3 +89,22 @@ def show_bounding_boxes_from_image_filename(dataset, image_filename):
     image = cv2.rectangle(image, (int(x),int(y)), (int(x+width), int(y+height)), color, thickness)
   plt.imshow(image)
   plt.show()
+
+def split_dataset_post_disaster(dataset, percent_train=0.8):
+  """
+  TODO: decide on equal distribution of damage type? or ? 
+  depending on what the other graphs show
+  """
+  if percent_train > 1:
+      return ()
+  train = {}
+  test = {}
+  trains = int(percent_train * len(dataset))
+  count = 0
+  for image in dataset:
+      if "post_disaster" in image:
+          if count < trains:
+              train[image] = dataset[image]
+          else:
+              test[image] = dataset[image]
+  return (train, test)
