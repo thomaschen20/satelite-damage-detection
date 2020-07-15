@@ -1,7 +1,20 @@
 
-#import cv2
+import cv2
 import glob
 import matplotlib.pyplot as plt
+import random
+def get_expanded_bounding_box(bbox, img, perc_exp=0.1):
+    """Returns the expanded bounding box.
+    Args:
+        perc_exp: percent expansion
+    """
+    h, w = img.shape[:2]
+    bbox = [int(round(b)) for b in bbox]  # [x, y, width, height]
+    bbox[0] = max(int(round(bbox[0] - bbox[2] * perc_exp)), 0)
+    bbox[1] = max(int(round(bbox[1] - bbox[3] * perc_exp)), 0)
+    bbox[2] = min(int(round(bbox[2] + bbox[2] * perc_exp * 2)), w - bbox[0])
+    bbox[3] = min(int(round(bbox[3] + bbox[3] * perc_exp * 2)), h - bbox[1])
+    return bbox
 
 def convert_format_to_tuple_of_coords(polygon_string):
   temp = []
@@ -65,10 +78,11 @@ def show_building_crops_from_image_filename(dataset, image_filename):
   image = cv2.imread(image_filename)[:,:,::-1].astype("uint8")
   print(len(dataset[image_filename]['building_list']))
   for building in dataset[image_filename]['building_list']:
-    x = building['bbox'][0]
-    y = building['bbox'][1]
-    width = building['bbox'][2]
-    height = building['bbox'][3]
+    bbox = get_expanded_bounding_box(building['bbox'], image)
+    x = bbox[0]
+    y = bbox[1]
+    width = bbox[2]
+    height = bbox[3]
     
     crop = image[int(y):int(y+height), int(x):int(x+width), :]
     resized_crop = cv2.resize(crop, (100,100), cv2.INTER_LINEAR)
@@ -82,10 +96,11 @@ def show_bounding_boxes_from_image_filename(dataset, image_filename):
   image = cv2.imread(image_filename)[:,:,::-1].astype("uint8")
   print(len(dataset[image_filename]['building_list']))
   for building in dataset[image_filename]['building_list']:
-    x = building['bbox'][0]
-    y = building['bbox'][1]
-    width = building['bbox'][2]
-    height = building['bbox'][3]
+    bbox = get_expanded_bounding_box(building['bbox'], image)
+    x = bbox[0]
+    y = bbox[1]
+    width = bbox[2]
+    height = bbox[3]
     image = cv2.rectangle(image, (int(x),int(y)), (int(x+width), int(y+height)), color, thickness)
   plt.imshow(image)
   plt.show()
@@ -101,10 +116,13 @@ def split_dataset_post_disaster(dataset, percent_train=0.8):
   test = {}
   trains = int(percent_train * len(dataset))
   count = 0
-  for image in dataset:
-      if "post_disaster" in image:
-          if count < trains:
-              train[image] = dataset[image]
-          else:
-              test[image] = dataset[image]
+  key_list = list(dataset.keys())
+  random.shuffle(key_list)          #randomizes order of images
+  for image in key_list:
+    if "post_disaster" in image:
+        if count < trains:
+            train[image] = dataset[image]
+        else:
+            test[image] = dataset[image]
+    count += 1
   return (train, test)
