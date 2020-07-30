@@ -52,8 +52,26 @@ def show_damage_level_frequency_in_dataset(dataset):
   plt.title('How damaged were the buildings in the dataset?')
   
   plt.show()
-  
   print(counter)
+
+def show_building_size_histogram_for_dataset(dataset):
+  all_sizes = []
+  max_size = 0
+  for image in dataset:
+    for building in dataset[image]['building_list']:
+        size = building['bbox'][2] * building['bbox'][3]
+        if size < 8000:
+          all_sizes.append(size)
+          max_size = max(max_size, size)
+  all_sizes = sorted(all_sizes)
+  plt.hist(all_sizes, bins = 100)
+  plt.xlabel('Size')
+  plt.ylabel('Building Count')
+  plt.title('Building Crop Pixel Area')
+  
+  plt.show()
+  print(max_size)
+  
 def show_damage_type_frequency_in_dataset(dataset):
   counter = {}
   types = []
@@ -74,11 +92,13 @@ def show_damage_type_frequency_in_dataset(dataset):
   
   print(counter)
 
-def show_building_crops_from_image_filename(dataset, image_filename):
+def show_building_crops_from_image_filename(dataset, image_filename, expanded = False):
   image = cv2.imread(image_filename)[:,:,::-1].astype("uint8")
-  print(len(dataset[image_filename]['building_list']))
   for building in dataset[image_filename]['building_list']:
-    bbox = get_expanded_bounding_box(building['bbox'], image)
+    if not expanded:
+      bbox = building['bbox']
+    else:
+      bbox = get_expanded_bounding_box(building['bbox'], image)
     x = bbox[0]
     y = bbox[1]
     width = bbox[2]
@@ -86,17 +106,20 @@ def show_building_crops_from_image_filename(dataset, image_filename):
     
     crop = image[int(y):int(y+height), int(x):int(x+width), :]
     resized_crop = cv2.resize(crop, (100,100), cv2.INTER_LINEAR)
+    print(width * height)
     plt.imshow(resized_crop)
     
     plt.show()
 
-def show_bounding_boxes_from_image_filename(dataset, image_filename):
+def show_bounding_boxes_from_image_filename(dataset, image_filename, expanded = False):
   color = (255,0,0)
   thickness = 2
   image = cv2.imread(image_filename)[:,:,::-1].astype("uint8")
-  print(len(dataset[image_filename]['building_list']))
   for building in dataset[image_filename]['building_list']:
-    bbox = get_expanded_bounding_box(building['bbox'], image)
+    if not expanded:
+      bbox = building['bbox']
+    else:
+      bbox = get_expanded_bounding_box(building['bbox'], image)
     x = bbox[0]
     y = bbox[1]
     width = bbox[2]
@@ -124,5 +147,30 @@ def split_dataset_post_disaster(dataset, percent_train=0.8):
             train[image] = dataset[image]
         else:
             test[image] = dataset[image]
+    count += 1
+  return (train, test)
+
+def split_dataset_pre_and_post_disaster(dataset, percent_train=0.8):
+  """
+  returns train set and test set, each of which contains pairs of pre and post images
+  """
+  if percent_train > 1:
+      return ()
+  train = {}
+  test = {}
+  trains = int(percent_train * len(dataset)/2)
+  count = 0
+  key_list = sorted(list(dataset.keys()))
+  pair_list = []
+  for i in range(1, len(key_list), 2):
+    pair_list.append((key_list[i - 1], key_list[i])) #append pair of pre and post
+  random.shuffle(pair_list)          #randomizes order of pairs
+  for (post_image, pre_image) in pair_list:
+    if count < trains:
+        train[post_image] = dataset[post_image]
+        train[pre_image] = dataset[pre_image]
+    else:
+        test[post_image] = dataset[post_image]
+        test[pre_image] = dataset[pre_image]
     count += 1
   return (train, test)
